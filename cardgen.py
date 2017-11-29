@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 INPUT_FILE = ""
 OUTPUT_DIR = "./cards/"
+HEADSHOTS_DIR = "headshots/"
 
 MIN_IMAGE_SIZE = (411, 561)
 SIZE_MULT = 2
@@ -18,6 +19,26 @@ FONT_SIZE_SMALL   = 20
 
 # TODO get headshot (in drawable we can mix)
 # TODO allow add stroke or boder
+def GetHeadshot(person):
+   first = person['First'].lower()
+   last = person['Last'].lower()
+   print("Finding " + first + " " + last)
+
+   # dumb find the first match
+   filename = None
+   for f in os.listdir(HEADSHOTS_DIR):
+      print(f)
+      if first in f and last in f:
+         filename = f
+         break
+   if not filename:
+      raise Exception("No headshot found for " + first + " " + last)
+
+   # generate a drawable canvas and return it
+   return Image.open(HEADSHOTS_DIR + filename)
+
+   with Image.open(HEADSHOTS_DIR + filename) as im:
+      return ImageDraw.Draw(im)
 
 def GenerateCard(idx, person):
    '''
@@ -33,17 +54,23 @@ def GenerateCard(idx, person):
    back = ImageDraw.Draw(base)
    back.rectangle([(0, 0), IMAGE_SIZE], fill='White')
 
+   # find this person's headshot
+   headshot = GetHeadshot(person)
+   base.paste(headshot, (100, 100))
+
    # get a font
    fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
+   fontMed = ImageFont.truetype(FONT_NAME, FONT_SIZE_MEDIUM)
+   fontSm = ImageFont.truetype(FONT_NAME, FONT_SIZE_SMALL)
 
    name = ImageDraw.Draw(base)
-   name.fontmode = "1" # this apparently sets (anti)aliasing
+   name.fontmode = "1" # this apparently sets (anti)aliasing for text
    name.text((0, 0), person['First'], font=fontBig, fill="Black")
 
+   #TODO title
+
    # composite the final image
-   #out = Image.alpha_composite(base, name)
-   out = base
-   out.save(title + "." + IMAGE_FORMAT, IMAGE_FORMAT)
+   base.save(OUTPUT_DIR + title + "." + IMAGE_FORMAT, IMAGE_FORMAT)
 
 for f in glob.glob("*.csv"):
    INPUT_FILE = f
@@ -60,7 +87,7 @@ with open(INPUT_FILE) as f:
       # fine, it already exists
       # TODO make this less permissive
       pass
-   os.chdir(OUTPUT_DIR)
+   #os.chdir(OUTPUT_DIR)
 
    # TODO use class csv.Sniffer to check if there is a header. If so use a csv.DictReader
    # first row will be used as keys
