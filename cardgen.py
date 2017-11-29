@@ -37,9 +37,6 @@ def GetHeadshot(person):
    # generate a drawable canvas and return it
    return Image.open(HEADSHOTS_DIR + filename)
 
-   with Image.open(HEADSHOTS_DIR + filename) as im:
-      return ImageDraw.Draw(im)
-
 def GenerateCard(idx, person):
    '''
    Dict of a person's info.
@@ -56,7 +53,15 @@ def GenerateCard(idx, person):
 
    # find this person's headshot
    headshot = GetHeadshot(person)
-   base.paste(headshot, (100, 100))
+   #base.paste(headshot, (100, 100))
+   #4-tuple defining the left, upper, right, and lower pixel coordinate
+   # resize headshot to a known size. Takes MAX width, height
+   headshot.thumbnail((IMAGE_SIZE[0], IMAGE_SIZE[1] / 1))
+   img_w, img_h = headshot.size
+   bg_w, bg_h = base.size
+   bg_h = bg_h / 2
+   topCenter = ((bg_w - img_w) / 2, ((bg_h - img_h) / 2) + 150)
+   base.paste(headshot, topCenter)
 
    # get a font
    fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
