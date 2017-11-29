@@ -60,7 +60,7 @@ def GenerateCard(idx, person):
    img_w, img_h = headshot.size
    bg_w, bg_h = base.size
    bg_h = bg_h / 2
-   topCenter = ((bg_w - img_w) / 2, ((bg_h - img_h) / 2) + 150)
+   topCenter = ((bg_w - img_w) / 2, ((bg_h - img_h) / 2) + 140)
    base.paste(headshot, topCenter)
 
    # get a font
@@ -70,7 +70,14 @@ def GenerateCard(idx, person):
 
    name = ImageDraw.Draw(base)
    name.fontmode = "1" # this apparently sets (anti)aliasing for text
-   name.text((0, 0), person['First'], font=fontBig, fill="Black")
+
+   formattedName = person['First'] + " " + person['Last']
+   if person['Nick']:
+      formattedName = person['First'] + " \"" + person['Nick'] + "\" " + person['Last']
+   w, h = name.textsize(formattedName, font=fontBig)
+   print("width = " + str(w))
+   w = (IMAGE_SIZE[0] - w) / 2
+   name.multiline_text((w, 15), formattedName, align="center", font=fontBig, fill="Black")
 
    #TODO title
 
