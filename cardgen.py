@@ -41,7 +41,8 @@ def GetHeadshot(person):
 
    # generate a drawable canvas and return it
    i = Image.open(HEADSHOTS_DIR + filename)
-   i.thumbnail((390, 600))
+   #TODO refine these to make the image as large as possible
+   i.thumbnail((460, 700))
    return i
 
 def GenerateSidebar(person):
@@ -104,11 +105,8 @@ def GenerateCard(idx, person):
    #base.paste(headshot, (100, 100))
    #4-tuple defining the left, upper, right, and lower pixel coordinate
    # resize headshot to a known size. Takes MAX width, height
-   img_w, img_h = headshot.size
-   bg_w, bg_h = base.size
-   bg_h = bg_h / 2
-   topCenter = ((bg_w - img_w) / 2, MARGIN + ((bg_h - img_h) / 2) + 140)
-   base.paste(headshot, topCenter)
+   # add to the left to move inside the card number
+   base.paste(headshot, (MARGIN + 100, MARGIN))
 
    # get a font
    fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
@@ -118,8 +116,11 @@ def GenerateCard(idx, person):
    info = ImageDraw.Draw(base)
    info.fontmode = "1" # this apparently sets (anti)aliasing for text
 
-   #TODO title
-   info.multiline_text((MARGIN, MARGIN + 300), "stuff", align="left", font=fontBig, fill="Black")
+   meta = '''Spouse:
+        {}
+Parents:
+        {}'''.format(person['Partner'], person['Parent'])
+   info.multiline_text((MARGIN, MARGIN + 700 + 30), meta, align="left", font=fontBig, fill="Black")
 
    # composite the final image
    title = str(idx) + "-" + person['First'] + " " + person['Last']
