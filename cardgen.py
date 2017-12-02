@@ -12,10 +12,14 @@ SIZE_MULT = 2
 IMAGE_SIZE = tuple([SIZE_MULT * x for x in MIN_IMAGE_SIZE])
 IMAGE_FORMAT = "png"
 
+MARGIN = 36 * 2
+
 FONT_NAME = 'Georgia.ttf'
 FONT_SIZE_BIG     = 60
 FONT_SIZE_MEDIUM  = 40
 FONT_SIZE_SMALL   = 20
+
+GRAD_CAP = u"\U0001F393"
 
 # TODO get headshot (in drawable we can mix)
 # TODO allow add stroke or boder
@@ -36,38 +40,22 @@ def GetHeadshot(person):
       raise Exception("No headshot found for " + first + " " + last)
 
    # generate a drawable canvas and return it
-   return Image.open(HEADSHOTS_DIR + filename)
+   i = Image.open(HEADSHOTS_DIR + filename)
+   i.thumbnail((390, 600))
+   return i
 
-def GenerateCard(idx, person):
+def GenerateSidebar(person):
    '''
-   Dict of a person's info.
-   Assume we're in the right target directory already and write to .
+   Render name + school w/ number of degrees, then rotate it vertically and return
    '''
-   title = str(idx) + "-" + person['First'] + "-" + person['Last']
-   print(person)
-
-   # empty image we will work on top of
-   base = Image.new("RGB", IMAGE_SIZE)
-
-   back = ImageDraw.Draw(base)
-   back.rectangle([(0, 0), IMAGE_SIZE], fill='White')
-
-   # find this person's headshot
-   headshot = GetHeadshot(person)
-   #base.paste(headshot, (100, 100))
-   #4-tuple defining the left, upper, right, and lower pixel coordinate
-   # resize headshot to a known size. Takes MAX width, height
-   headshot.thumbnail((IMAGE_SIZE[0], IMAGE_SIZE[1] / 1))
-   img_w, img_h = headshot.size
-   bg_w, bg_h = base.size
-   bg_h = bg_h / 2
-   topCenter = ((bg_w - img_w) / 2, ((bg_h - img_h) / 2) + 140)
-   base.paste(headshot, topCenter)
-
-   # get a font
    fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
+   #fontMed = ImageFont.truetype("Arial Unicode.ttf", FONT_SIZE_MEDIUM)
    fontMed = ImageFont.truetype(FONT_NAME, FONT_SIZE_MEDIUM)
-   fontSm = ImageFont.truetype(FONT_NAME, FONT_SIZE_SMALL)
+
+   size = tuple(reversed(IMAGE_SIZE))
+   size = (1000, 200)
+   print(size)
+   base = Image.new("RGBA", size, "white")
 
    name = ImageDraw.Draw(base)
    name.fontmode = "1" # this apparently sets (anti)aliasing for text
@@ -76,13 +64,65 @@ def GenerateCard(idx, person):
    if person['Nick']:
       formattedName = person['First'] + " \"" + person['Nick'] + "\" " + person['Last']
    w, h = name.textsize(formattedName, font=fontBig)
-   print("width = " + str(w))
-   w = (IMAGE_SIZE[0] - w) / 2
-   name.multiline_text((w, 15), formattedName, align="center", font=fontBig, fill="Black")
+   name.text((0, 0), formattedName, align="center", font=fontBig, fill="black")
+
+   degrees = int(person["Number Of Degrees"])
+   print("degs = " + str(degrees))
+   school = person["Alma Mater"] + " " + GRAD_CAP
+   for i in range(degrees):
+      print("adding deg")
+      school = school + GRAD_CAP
+   school = school + " - " + person['Field']
+   print(school)
+   name.text((0, 5 + h), school, align="center", font=fontMed, fill="black")
+
+   return base
+
+def GenerateCard(idx, person):
+   '''
+   Dict of a person's info.
+   Assume we're in the right target directory already and write to .
+   '''
+   print(person)
+
+   # empty image we will work on top of
+   base = Image.new("RGB", IMAGE_SIZE)
+
+   back = ImageDraw.Draw(base)
+   back.rectangle([(0, 0), IMAGE_SIZE], fill='White')
+
+   sidebar = GenerateSidebar(person)
+   # center origin is upper left
+   #sidebar = sidebar.rotate(90, expand=1, center=(0, 0))
+   #sidebar.rotate(90, expand=1, center=(0, 0))
+   sidebar = sidebar.rotate(270, expand=1)
+   topRight = (IMAGE_SIZE[0] - MARGIN - 200, MARGIN)
+   base.paste(sidebar, topRight)
+
+   # find this person's headshot
+   headshot = GetHeadshot(person)
+   #base.paste(headshot, (100, 100))
+   #4-tuple defining the left, upper, right, and lower pixel coordinate
+   # resize headshot to a known size. Takes MAX width, height
+   img_w, img_h = headshot.size
+   bg_w, bg_h = base.size
+   bg_h = bg_h / 2
+   topCenter = ((bg_w - img_w) / 2, MARGIN + ((bg_h - img_h) / 2) + 140)
+   base.paste(headshot, topCenter)
+
+   # get a font
+   fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
+   fontMed = ImageFont.truetype(FONT_NAME, FONT_SIZE_MEDIUM)
+   fontSm = ImageFont.truetype(FONT_NAME, FONT_SIZE_SMALL)
+
+   info = ImageDraw.Draw(base)
+   info.fontmode = "1" # this apparently sets (anti)aliasing for text
 
    #TODO title
+   info.multiline_text((MARGIN, MARGIN + 300), "stuff", align="left", font=fontBig, fill="Black")
 
    # composite the final image
+   title = str(idx) + "-" + person['First'] + " " + person['Last']
    base.save(OUTPUT_DIR + title + "." + IMAGE_FORMAT, IMAGE_FORMAT)
 
 for f in glob.glob("*.csv"):
@@ -94,6 +134,12 @@ print("Working on [" + str(INPUT_FILE) + "] and writing to [" + OUTPUT_DIR + "]"
 count = 0
 with open(INPUT_FILE) as f:
    # move to the output dir now that the CSV is open
+   try:
+      os.mkdir(HEADSHOTS_DIR)
+   except:
+      # TODO make this less permissive
+      pass
+
    try:
       os.mkdir(OUTPUT_DIR)
    except:
