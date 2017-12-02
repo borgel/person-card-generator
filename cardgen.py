@@ -27,6 +27,7 @@ def GetHeadshot(person):
    # dumb find the first match
    filename = None
    for f in os.listdir(HEADSHOTS_DIR):
+      f = f.lower()
       print(f)
       if first in f and last in f:
          filename = f
