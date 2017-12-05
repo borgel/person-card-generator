@@ -1,11 +1,13 @@
 #!/usr/local/bin/python
 
 import sys, os, glob, csv
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 INPUT_FILE = ""
 OUTPUT_DIR = "./cards/"
+
 HEADSHOTS_DIR = "headshots/"
+HEADSHOT_BLANK = "blank headshot.jpeg"
 
 MIN_IMAGE_SIZE = (411, 561)
 SIZE_MULT = 2
@@ -15,6 +17,7 @@ IMAGE_FORMAT = "png"
 MARGIN = 36 * 2
 
 FONT_NAME = 'Georgia.ttf'
+FONT_NAME_EMOJI = 'Symbola.ttf'
 FONT_SIZE_BIG     = 60
 FONT_SIZE_MEDIUM  = 40
 FONT_SIZE_SMALL   = 20
@@ -30,19 +33,22 @@ def GetHeadshot(person):
 
    # dumb find the first match
    filename = None
-   for f in os.listdir(HEADSHOTS_DIR):
-      f = f.lower()
-      print(f)
-      if first in f and last in f:
-         filename = f
-         break
+   if "___" not in first:
+      for f in os.listdir(HEADSHOTS_DIR):
+         f = f.lower()
+         if first in f and last in f:
+            filename = f
+            break
    if not filename:
-      raise Exception("No headshot found for " + first + " " + last)
+      #raise Exception("No headshot found for " + first + " " + last)
+      filename = HEADSHOT_BLANK
 
    # generate a drawable canvas and return it
    i = Image.open(HEADSHOTS_DIR + filename)
    #TODO refine these to make the image as large as possible
-   i.thumbnail((460, 700))
+   #i.thumbnail((460, 700))
+   #i.thumbnail((400, 700))
+   i = ImageOps.fit(i, (400, 700))
    return i
 
 def GenerateSidebar(person):
@@ -52,9 +58,10 @@ def GenerateSidebar(person):
    fontBig = ImageFont.truetype(FONT_NAME, FONT_SIZE_BIG)
    #fontMed = ImageFont.truetype("Arial Unicode.ttf", FONT_SIZE_MEDIUM)
    fontMed = ImageFont.truetype(FONT_NAME, FONT_SIZE_MEDIUM)
+   fontEmoji = ImageFont.truetype(FONT_NAME_EMOJI, FONT_SIZE_MEDIUM, encoding='unic')
 
    size = tuple(reversed(IMAGE_SIZE))
-   size = (1000, 200)
+   size = (1200, 200)
    print(size)
    base = Image.new("RGBA", size, "white")
 
@@ -67,15 +74,22 @@ def GenerateSidebar(person):
    w, h = name.textsize(formattedName, font=fontBig)
    name.text((0, 0), formattedName, align="center", font=fontBig, fill="black")
 
-   degrees = int(person["Number Of Degrees"])
+   degrees = 0
+   try:
+      degrees = int(person["Number Of Degrees"])
+   except:
+      # leave degrees at 0
+      pass
+
    print("degs = " + str(degrees))
-   school = person["Alma Mater"] + " " + GRAD_CAP
-   for i in range(degrees):
+   school = person["Alma Mater"] + " "
+   for i in range(0, degrees):
       print("adding deg")
       school = school + GRAD_CAP
-   school = school + " - " + person['Field']
+
+   school = school + "\n" + person['Field']
    print(school)
-   name.text((0, 5 + h), school, align="center", font=fontMed, fill="black")
+   name.text((0, 5 + h), school, align="left", font=fontEmoji, fill="black")
 
    return base
 
@@ -116,10 +130,16 @@ def GenerateCard(idx, person):
    info = ImageDraw.Draw(base)
    info.fontmode = "1" # this apparently sets (anti)aliasing for text
 
-   meta = '''Spouse:
-        {}
-Parents:
-        {}'''.format(person['Partner'], person['Parent'])
+   meta = ''
+   if len(person['Partner']) > 0:
+      # TODO append spouse
+      meta = meta + '''Partner:
+     {}\n'''.format(person['Partner'])
+   if len(person['Parent']) > 0:
+      meta = meta + '''Parents:
+     {}'''.format(person['Parent'])
+
+   # render the meta
    info.multiline_text((MARGIN, MARGIN + 700 + 30), meta, align="left", font=fontBig, fill="Black")
 
    # composite the final image
@@ -154,6 +174,7 @@ with open(INPUT_FILE) as f:
    reader = csv.DictReader(f)
 
    for person in reader:
-      GenerateCard(count, person)
-      count = count + 1
+      if len(person["First"]) > 0 or len(person["Last"]) > 0:
+         GenerateCard(count, person)
+         count = count + 1
 
